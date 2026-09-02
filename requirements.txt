@@ -3,3 +3,4 @@ pandas
 openpyxl
 pyzbar
 Pillow
+psycopg2-binary

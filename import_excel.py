@@ -1,11 +1,12 @@
 """
 import_excel.py
-Script untuk mengimpor data master barang dari file Excel ke database SQLite.
-Cara pakai (lewat terminal):
-    python import_excel.py "nama_file.xlsx"
+Script untuk mengimpor data master barang dari file Excel ke database PostgreSQL (Supabase).
+Fungsi import_dataframe() di file ini juga dipakai oleh app.py untuk fitur
+'Upload Data Master dari Excel' langsung dari halaman web.
 
-Atau kalau nama file mengandung spasi:
-    python import_excel.py "data barang.xlsx"
+Cara pakai lewat terminal (opsional, kalau ingin import dari laptop langsung
+tanpa lewat halaman web â€” perlu file .streamlit/secrets.toml lokal):
+    python import_excel.py "nama_file.xlsx"
 """
 
 import sys
