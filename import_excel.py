@@ -1,0 +1,102 @@
+"""
+import_excel.py
+Script untuk mengimpor data master barang dari file Excel ke database SQLite.
+Cara pakai (lewat terminal):
+    python import_excel.py "nama_file.xlsx"
+
+Atau kalau nama file mengandung spasi:
+    python import_excel.py "data barang.xlsx"
+"""
+
+import sys
+import pandas as pd
+from database import init_db, insert_asset
+
+# ==========================================================
+# MAPPING KOLOM
+# Sesuaikan bagian ini kalau nama header di Excel Anda berbeda.
+# Format: "nama_kolom_di_database": "nama_header_persis_di_excel"
+# ==========================================================
+COLUMN_MAPPING = {
+    "period_name": "Period Name",
+    "book_type": "Book Type",
+    "asset_number": "Asset Number",
+    "asset_name": "Asset Name",
+    "location": "LOCATION",
+    "internal_vendor": "Internal/Vendor",
+    "system": "System",
+}
+
+
+def import_from_excel(file_path):
+    print(f"Membaca file: {file_path} ...")
+
+    # Baca file Excel. Kalau ada beberapa sheet, ganti sheet_name sesuai kebutuhan.
+    df = pd.read_excel(file_path, sheet_name=0)
+
+    # Bersihkan nama kolom dari spasi berlebih
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Cek apakah semua kolom yang dibutuhkan ada di file Excel
+    missing_columns = [
+        excel_col for excel_col in COLUMN_MAPPING.values()
+        if excel_col not in df.columns
+    ]
+    if missing_columns:
+        print("PERINGATAN: kolom berikut tidak ditemukan di file Excel:")
+        for col in missing_columns:
+            print(f"   - {col}")
+        print("Kolom yang tersedia di file:")
+        for col in df.columns:
+            print(f"   - {col}")
+        print("\nSilakan sesuaikan COLUMN_MAPPING di bagian atas file ini, lalu jalankan ulang.")
+        return
+
+    init_db()
+
+    total = len(df)
+    berhasil = 0
+    dilewati = 0
+
+    for _, row in df.iterrows():
+        asset_number = row.get(COLUMN_MAPPING["asset_number"])
+
+        # Lewati baris yang Asset Number-nya kosong
+        if pd.isna(asset_number) or str(asset_number).strip() == "":
+            dilewati += 1
+            continue
+
+        data = {
+            "period_name": _clean(row.get(COLUMN_MAPPING["period_name"])),
+            "book_type": _clean(row.get(COLUMN_MAPPING["book_type"])),
+            "asset_number": str(asset_number).strip(),
+            "asset_name": _clean(row.get(COLUMN_MAPPING["asset_name"])),
+            "location": _clean(row.get(COLUMN_MAPPING["location"])),
+            "internal_vendor": _clean(row.get(COLUMN_MAPPING["internal_vendor"])),
+            "system": _clean(row.get(COLUMN_MAPPING["system"])),
+        }
+
+        insert_asset(data)
+        berhasil += 1
+
+    print("\nSelesai import.")
+    print(f"   Total baris di Excel : {total}")
+    print(f"   Berhasil diproses    : {berhasil}")
+    print(f"   Dilewati (data kosong): {dilewati}")
+    print("\nCatatan: barang dengan Asset Number yang SAMA dengan yang sudah ada di database akan otomatis dilewati (tidak dobel).")
+
+
+def _clean(value):
+    """Ubah nilai kosong/NaN dari Excel jadi string kosong, selain itu jadi string biasa."""
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Cara pakai: python import_excel.py \"nama_file.xlsx\"")
+        sys.exit(1)
+
+    file_path = sys.argv[1]
+    import_from_excel(file_path)
