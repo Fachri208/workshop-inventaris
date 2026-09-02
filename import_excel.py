@@ -28,12 +28,15 @@ COLUMN_MAPPING = {
 }
 
 
-def import_from_excel(file_path):
-    print(f"Membaca file: {file_path} ...")
+def import_dataframe(df):
+    """
+    Fungsi inti: menerima DataFrame pandas (dari file Excel manapun sumbernya,
+    baik dibuka lewat path file atau hasil upload di Streamlit) dan
+    memasukkan datanya ke database.
 
-    # Baca file Excel. Kalau ada beberapa sheet, ganti sheet_name sesuai kebutuhan.
-    df = pd.read_excel(file_path, sheet_name=0)
-
+    Return: dict berisi ringkasan hasil import, atau dict berisi 'error'
+    kalau ada kolom yang tidak ditemukan.
+    """
     # Bersihkan nama kolom dari spasi berlebih
     df.columns = [str(c).strip() for c in df.columns]
 
@@ -43,14 +46,11 @@ def import_from_excel(file_path):
         if excel_col not in df.columns
     ]
     if missing_columns:
-        print("PERINGATAN: kolom berikut tidak ditemukan di file Excel:")
-        for col in missing_columns:
-            print(f"   - {col}")
-        print("Kolom yang tersedia di file:")
-        for col in df.columns:
-            print(f"   - {col}")
-        print("\nSilakan sesuaikan COLUMN_MAPPING di bagian atas file ini, lalu jalankan ulang.")
-        return
+        return {
+            "error": True,
+            "missing_columns": missing_columns,
+            "available_columns": list(df.columns),
+        }
 
     init_db()
 
@@ -79,10 +79,37 @@ def import_from_excel(file_path):
         insert_asset(data)
         berhasil += 1
 
+    return {
+        "error": False,
+        "total": total,
+        "berhasil": berhasil,
+        "dilewati": dilewati,
+    }
+
+
+def import_from_excel(file_path):
+    """
+    Dipakai untuk menjalankan import lewat command line:
+        python import_excel.py "nama_file.xlsx"
+    """
+    print(f"Membaca file: {file_path} ...")
+    df = pd.read_excel(file_path, sheet_name=0)
+    hasil = import_dataframe(df)
+
+    if hasil["error"]:
+        print("PERINGATAN: kolom berikut tidak ditemukan di file Excel:")
+        for col in hasil["missing_columns"]:
+            print(f"   - {col}")
+        print("Kolom yang tersedia di file:")
+        for col in hasil["available_columns"]:
+            print(f"   - {col}")
+        print("\nSilakan sesuaikan COLUMN_MAPPING di bagian atas file ini, lalu jalankan ulang.")
+        return
+
     print("\nSelesai import.")
-    print(f"   Total baris di Excel : {total}")
-    print(f"   Berhasil diproses    : {berhasil}")
-    print(f"   Dilewati (data kosong): {dilewati}")
+    print(f"   Total baris di Excel : {hasil['total']}")
+    print(f"   Berhasil diproses    : {hasil['berhasil']}")
+    print(f"   Dilewati (data kosong): {hasil['dilewati']}")
     print("\nCatatan: barang dengan Asset Number yang SAMA dengan yang sudah ada di database akan otomatis dilewati (tidak dobel).")
 
 
