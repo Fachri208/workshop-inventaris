@@ -129,6 +129,9 @@ def create_and_update_asset(asset_number, period_name, book_type, asset_name, lo
     conn.commit()
     cursor.close()
     conn.close()
+
+
+def update_stock_taking(asset_number, asset_condition, updated_location, transfer_to, request_reprint):
     """
     Update kolom hasil stock taking (yang diisi manual setelah scan QR).
     Dipanggil saat user klik tombol 'Simpan' di form.
