@@ -94,7 +94,41 @@ def insert_asset(data: dict):
     conn.close()
 
 
-def update_stock_taking(asset_number, asset_condition, updated_location, transfer_to, request_reprint):
+def create_and_update_asset(asset_number, period_name, book_type, asset_name, location,
+                             internal_vendor, system, asset_condition, updated_location,
+                             transfer_to, request_reprint):
+    """
+    Dipakai saat Asset Number hasil scan BELUM ADA di database.
+    Membuat baris baru sekaligus (data master + hasil pengecekan) dalam satu langkah,
+    karena user mengisi semuanya secara manual lewat form.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO assets
+        (asset_number, period_name, book_type, asset_name, location, internal_vendor, system,
+         asset_condition, updated_location, transfer_to, request_reprint, last_scanned_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (asset_number) DO UPDATE SET
+            period_name = EXCLUDED.period_name,
+            book_type = EXCLUDED.book_type,
+            asset_name = EXCLUDED.asset_name,
+            location = EXCLUDED.location,
+            internal_vendor = EXCLUDED.internal_vendor,
+            system = EXCLUDED.system,
+            asset_condition = EXCLUDED.asset_condition,
+            updated_location = EXCLUDED.updated_location,
+            transfer_to = EXCLUDED.transfer_to,
+            request_reprint = EXCLUDED.request_reprint,
+            last_scanned_at = EXCLUDED.last_scanned_at
+    """, (
+        asset_number, period_name, book_type, asset_name, location, internal_vendor, system,
+        asset_condition, updated_location, transfer_to, request_reprint,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+    conn.commit()
+    cursor.close()
+    conn.close()
     """
     Update kolom hasil stock taking (yang diisi manual setelah scan QR).
     Dipanggil saat user klik tombol 'Simpan' di form.
